@@ -90,31 +90,34 @@ class Slash(commands.Cog):
   @app_commands.command(name="search", description="searching a novel")
   @app_commands.guild_only()
   async def search(self, interaction: discord.Interaction, title: str):
-    await interaction.response.defer()
+    try:
+      await interaction.response.defer()
 
-    # scrape data
-    titles_bs4 = self.scraper.scrape_list_title(title)
-    if titles_bs4:
-      async def callback(interaction: discord.Interaction):
-        try:
-          await self._find_chapter(interaction, select.values[0])
-        except Exception as e:
-          print(e)
+      # scrape data
+      titles_bs4 = self.scraper.scrape_list_title(title)
+      if titles_bs4:
+        async def callback(interaction: discord.Interaction):
+          try:
+            await self._find_chapter(interaction, select.values[0])
+          except Exception as e:
+            print(e)
 
-      # create ui
-      select = Select(
-        placeholder="Choose one option...",
-        options=[discord.SelectOption(label=title.get_text(), value=title.get("href")) for title in titles_bs4],
-      )
-      select.callback = callback
+        # create ui
+        select = Select(
+          placeholder="Choose one option...",
+          options=[discord.SelectOption(label=title.get_text(), value=title.get("href")) for title in titles_bs4],
+        )
+        select.callback = callback
 
-      view = View()
-      view.add_item(select)
+        view = View()
+        view.add_item(select)
 
-      # scrap novel
-      await interaction.followup.send(view=view, ephemeral=True)
-    else:
-      await interaction.followup.send("Not Found")
+        # scrap novel
+        await interaction.followup.send(view=view, ephemeral=True)
+      else:
+        await interaction.followup.send("Not Found")
+    except Exception as e:
+      print(e)
 
   @app_commands.command(name="read", description="Start reading a novel")
   @app_commands.guild_only()
