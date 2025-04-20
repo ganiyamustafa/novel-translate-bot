@@ -1,0 +1,128 @@
+import requests
+import os
+
+from multiprocessing import Pool
+from urllib import parse
+from groq import Groq
+from bs4 import BeautifulSoup, ResultSet, Tag
+from typing import Tuple
+from enum import Enum
+
+groq_client = Groq(
+  api_key=os.getenv("GROQ_KEY"),
+)
+
+class TranslateOutputType(Enum):
+  STRING = 0
+  LIST_STRING = 1
+
+class Scraper():
+  def __init__(self):
+    self.url = ""
+    self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    self.html_content = ""
+    self.groq_client = groq_client
+
+  def _request_html_content(self):
+    response = requests.get(self.url, headers=self.headers)
+
+    if response.status_code == 200:
+      self.html_content = response.text
+    else:
+      raise ValueError("Failed to retrieve page")
+
+  def set_url(self, url):
+    self.url = url
+    return self
+
+  def scrape_list_title(self, title) -> Tuple[ResultSet[Tag], Tag, Tag]:
+    self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
+
+    soup = BeautifulSoup(self.html_content, "html.parser")
+    return soup.select("div.searchkekka_box .novel_h .tl")
+
+  def scrape_list_chapter(self, title_url: str) -> ResultSet[Tag]:
+    self.set_url(title_url)._request_html_content()
+
+    soup = BeautifulSoup(self.html_content, "html.parser")
+    return soup.select("div.p-eplist .p-eplist__sublist .p-eplist__subtitle"), soup.select_one(".c-pager__item--next"), soup.select_one(".c-pager__item--before")
+
+  def scrape_story(self, url: str) -> Tag:
+    self.set_url(f'https://ncode.syosetu.com/{url}')._request_html_content()
+
+    soup = BeautifulSoup(self.html_content, "html.parser")
+    return soup.select_one("div.p-novel__body")
+
+  def translate(self, data: str, output_type: TranslateOutputType = TranslateOutputType.STRING) -> str | list[str]:
+    filtered_datas = [txt for txt in data.split('\n') if txt]
+    args_worker = []
+    outputs = []
+
+    while filtered_datas:
+      untranslated_text = ""
+
+      while len(untranslated_text) <= 1500:
+        if not filtered_datas: 
+          break
+
+        untranslated_text += filtered_datas.pop(0)
+
+      args_worker.append((untranslated_text, os.getenv("GROQ_KEY")))
+
+    # multiprocessing worker
+    with Pool(processes=len(args_worker)) as pool:
+      outputs = pool.map(_translate_text_worker, args_worker)
+
+    if output_type == TranslateOutputType.STRING:
+      return '\n'.join(outputs)
+    elif output_type == TranslateOutputType.LIST_STRING:
+      return outputs
+
+def _translate_text_worker(args):
+  # Unpack arguments
+  untranslated_txt, api_key = args
+  
+  # Create a new client for each worker process
+  from groq import Groq  # Import here to avoid pickling issues
+  groq_client = Groq(api_key=api_key)
+  
+  chat_completion = groq_client.chat.completions.create(
+      messages=[
+          {
+              "role": "user",
+              "content": f"Terjemahkan dalam bahasa indonesia, buat agar tidak MTL \n {untranslated_txt}",
+          }
+      ],
+      model="deepseek-r1-distill-llama-70b",
+  )
+
+  try:
+      return chat_completion.choices[0].message.content.split("</think>")[1]
+  except IndexError:
+      return "[Format Error]"
+
+# translated_text = ""
+
+# while filtered_text:
+#   print("start again ", len(filtered_text))
+#   untranslated_text = ""
+
+#   while len(untranslated_text) <= 1400:
+#     if not filtered_text: 
+#       break
+    
+#     untranslated_text += "\n" + filtered_text.pop(0)
+
+#   chat_completion = client.chat.completions.create(
+#       messages=[
+#           {
+#               "role": "user",
+#               "content": f"Terjemahkan dalam bahasa indonesia, buat agar tidak MTL \n {untranslated_text}",
+#           }
+#       ],
+#       model="deepseek-r1-distill-llama-70b",
+#   )
+
+#   translated_text += chat_completion.choices[0].message.content.split("</think>")[1]
+
+# print(translated_text)
