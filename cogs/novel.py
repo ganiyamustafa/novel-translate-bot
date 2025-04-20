@@ -94,7 +94,7 @@ class Slash(commands.Cog):
       await interaction.response.defer()
 
       # scrape data
-      titles_bs4 = self.scraper.scrape_list_title(title)
+      titles_bs4 = await self.scraper.scrape_list_title(title)
       if titles_bs4:
         async def callback(interaction: discord.Interaction):
           try:
