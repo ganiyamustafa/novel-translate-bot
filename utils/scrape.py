@@ -29,7 +29,7 @@ class Scraper():
     if response.status_code == 200:
       self.html_content = response.text
     else:
-      raise ValueError("Failed to retrieve page")
+      raise ValueError("Failed to retrieve page\nstatus code: ", response.status_code, "\nmessage: ", response.text[:200])
 
   def set_url(self, url):
     self.url = url
