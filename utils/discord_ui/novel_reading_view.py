@@ -1,15 +1,19 @@
 import discord
 import math
+from typing import Callable
 from discord.ui import Select, View, Button
 from bs4 import ResultSet, Tag
 
 class NovelReadingView(View):
-  def __init__(self, datas: list[str], per_page: int=1):
+  def __init__(self, datas: list[str], next_chapter_tag: Tag, prev_chapter_tag: Tag, update_chapter_callback: Callable[[discord.Interaction, str], None], per_page: int=1):
     super().__init__(timeout=None)
     self.datas = datas
     self.per_page = per_page
     self.page = 0
     self.max_page = math.ceil(len(datas) / per_page) - 1
+    self.prev_chapter_tag = prev_chapter_tag
+    self.next_chapter_tag = next_chapter_tag
+    self.update_chapter_callback = update_chapter_callback
     self.update_view()
 
   def update_view(self):
@@ -38,8 +42,9 @@ class NovelReadingView(View):
     button = Button(label="Prev Chapter", style=discord.ButtonStyle.green)
 
     async def callback(interaction: discord.Interaction):
-      pass
+      await self.update_chapter_callback(interaction, self.prev_chapter_tag.get("href"))
 
+    button.disabled = not bool(self.prev_chapter_tag)
     button.callback = callback
     return button
 
@@ -64,8 +69,9 @@ class NovelReadingView(View):
     button = Button(label="Next Chapter", style=discord.ButtonStyle.green)
 
     async def callback(interaction: discord.Interaction):
-      pass
+      await self.update_chapter_callback(interaction, self.next_chapter_tag.get("href"))
 
+    button.disabled = not bool(self.next_chapter_tag)
     button.callback = callback
     return button
 

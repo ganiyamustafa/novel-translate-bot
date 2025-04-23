@@ -47,11 +47,11 @@ class Scraper():
     soup = BeautifulSoup(self.html_content, "html.parser")
     return soup.select("div.p-eplist .p-eplist__sublist .p-eplist__subtitle"), soup.select_one(".c-pager__item--next"), soup.select_one(".c-pager__item--before")
 
-  def scrape_story(self, url: str) -> Tag:
+  def scrape_story(self, url: str) -> Tuple[Tag, Tag, Tag]:
     self.set_url(f'https://ncode.syosetu.com/{url}')._request_html_content()
 
     soup = BeautifulSoup(self.html_content, "html.parser")
-    return soup.select_one("div.p-novel__body")
+    return soup.select_one("div.p-novel__body"), soup.select_one("a.c-pager__item--next"), soup.select_one("a.c-pager__item--before")
 
   def translate(self, data: str, output_type: TranslateOutputType = TranslateOutputType.STRING) -> str | list[str]:
     filtered_datas = [txt for txt in data.split('\n') if txt]

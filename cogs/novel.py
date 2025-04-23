@@ -55,12 +55,12 @@ class Slash(commands.Cog):
   async def _read_story(self, interaction: discord.Interaction, url: str):
     await interaction.response.defer()
 
-    feedback_msg = await interaction.followup.send("Processing your request, maybe took a minute, please wait...", ephemeral=True)
+    feedback_msg = await interaction.followup.send(content="Processing your request, maybe took a minute, please wait...", ephemeral=True)
 
     try:
-      story = self.scraper.scrape_story(url)
+      story, next_chapter, prev_chapter = self.scraper.scrape_story(url)
       translated_story = self.scraper.translate(story.text)
-      filtered_translated_story = [txt for txt in translated_story.split('\n')]
+      filtered_translated_story = [txt for txt in translated_story.split('\n')] # break text for limit text function used
       story_datas = []
 
       print(len(filtered_translated_story))
@@ -68,10 +68,17 @@ class Slash(commands.Cog):
       while filtered_translated_story:
         story_data = ""
 
+        # break text if reached 2000 length and empty story data for avoid eternal loop
+        if len(filtered_translated_story[0]) > 2000 and not story_data:
+          filtered_translated_story.insert(1, filtered_translated_story[0][1999:])
+          filtered_translated_story[0] = filtered_translated_story[0][:1999]
+
+
+        # break text for discord max limit text length
         while len(story_data) <= 1500:
           if not filtered_translated_story:
             break
-
+          
           if len(story_data) + len(filtered_translated_story[0]) > 2000:
             print("hehe", len(story_data))
             break
@@ -80,7 +87,7 @@ class Slash(commands.Cog):
 
         story_datas.append(story_data)
 
-      view=NovelReadingView(datas=story_datas)
+      view=NovelReadingView(datas=story_datas, next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story)
 
       await feedback_msg.edit(content=story_datas[0], view=view)
     except Exception as e:
