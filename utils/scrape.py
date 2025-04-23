@@ -90,7 +90,7 @@ def _translate_text_worker(args):
       messages=[
           {
               "role": "user",
-              "content": f"Terjemahkan dalam bahasa indonesia, buat agar tidak MTL \n {untranslated_txt}",
+              "content": f"Terjemahkan kalimat berikut ke dalam bahasa Indonesia dengan gaya bahasa manusia yang alami, tidak kaku, tidak seperti terjemahan mesin. Pastikan hasilnya enak dibaca dan seolah ditulis oleh penutur asli bahasa Indonesia. Jangan tambahkan penjelasan atau kata apa pun di luar hasil terjemahan. Cukup berikan hasil terjemahannya saja. \n {untranslated_txt}",
           }
       ],
       model="deepseek-r1-distill-llama-70b",
