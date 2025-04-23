@@ -1,6 +1,5 @@
 import requests
 import os
-import httpx
 
 from multiprocessing import Pool
 from urllib import parse
@@ -20,27 +19,12 @@ class TranslateOutputType(Enum):
 class Scraper():
   def __init__(self):
     self.url = ""
-    self.headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Referer': 'https://www.google.com/',
-      'DNT': '1',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'cross-site',
-      'Sec-Fetch-User': '?1',
-      'Cache-Control': 'max-age=0',
-    }
+    self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     self.html_content = ""
     self.groq_client = groq_client
 
-  async def _request_html_content(self):
-    async with httpx.AsyncClient() as client:
-      response = await client.get(self.url, headers=self.headers)
+  def _request_html_content(self):
+    response = requests.get(self.url, headers=self.headers)
 
     if response.status_code == 200:
       self.html_content = response.text
@@ -51,8 +35,8 @@ class Scraper():
     self.url = url
     return self
 
-  async def scrape_list_title(self, title) -> Tuple[ResultSet[Tag], Tag, Tag]:
-    await self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
+  def scrape_list_title(self, title) -> Tuple[ResultSet[Tag], Tag, Tag]:
+    self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
 
     soup = BeautifulSoup(self.html_content, "html.parser")
     return soup.select("div.searchkekka_box .novel_h .tl")
