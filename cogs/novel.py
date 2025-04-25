@@ -3,23 +3,26 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import Select, View
-from utils import Scraper, TranslateOutputType
+from utils import Scraper, History
+from utils.enum import TranslateOutputType
 from utils.discord_ui import PaginationResultTagSelectView, NovelReadingView
 
 class Slash(commands.Cog):
   def __init__(self, client: commands.Bot):
     self.client = client
     self.scraper = Scraper()
+    self.history = History()
 
   @commands.command(name="sync")
   async def sync(self, ctx) -> None:
     fmt = await self.client.tree.sync()
     await ctx.send(f"Synced {len(fmt)} commands.")
 
-  async def _find_chapter(self, interaction: discord.Interaction, url: str):
+  async def _find_chapter(self, interaction: discord.Interaction, data: str):
     # await interaction.response.defer()
 
     # main logic
+    url, novel_title = data.split("|")
     chapters_bs4, next_tag, prev_tag = self.scraper.scrape_list_chapter(url)
 
     if not chapters_bs4:
@@ -27,7 +30,7 @@ class Slash(commands.Cog):
 
     async def select_callback(interact: discord.Interaction):
       try:
-        await self._read_story(interact, interact.data['values'][0])
+        await self._read_story(interact, f"{interact.data['values'][0]}|{novel_title}")
       except Exception as e:
         print(e)
 
@@ -52,9 +55,10 @@ class Slash(commands.Cog):
     # scrap novel
     await interaction.response.edit_message(content="", view=view)
 
-  async def _read_story(self, interaction: discord.Interaction, url: str):
+  async def _read_story(self, interaction: discord.Interaction, data: str):
     await interaction.response.defer()
 
+    url, ch_id, ch_title, novel_title = data.split("|")
     feedback_msg = await interaction.followup.send(content="Processing your request, maybe took a minute, please wait...", ephemeral=True)
 
     try:
@@ -87,7 +91,9 @@ class Slash(commands.Cog):
 
         story_datas.append(story_data)
 
-      view=NovelReadingView(datas=story_datas, next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story)
+      view=NovelReadingView(datas=story_datas, novel_data=data,  next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story)
+
+      await self.history.save_read_history(novel_title, ch_title, next_chapter.get("href"), ch_id, interaction.user.name)
 
       await feedback_msg.edit(content=story_datas[0], view=view)
     except Exception as e:
@@ -112,8 +118,9 @@ class Slash(commands.Cog):
         # create ui
         select = Select(
           placeholder="Choose one option...",
-          options=[discord.SelectOption(label=title.get_text(), value=title.get("href")) for title in titles_bs4],
+          options=[discord.SelectOption(label=title.get_text(), value=f'{title.get("href")}|{title.get_text()}') for title in titles_bs4],
         )
+
         select.callback = callback
 
         view = View()
@@ -123,6 +130,19 @@ class Slash(commands.Cog):
         await interaction.followup.send(view=view, ephemeral=True)
       else:
         await interaction.followup.send("Not Found")
+    except Exception as e:
+      print(e)
+
+  @app_commands.command(name="history", description="Get Read History")
+  @app_commands.guild_only()
+  async def read_history(self, interaction: discord.Interaction):
+    try:
+      await interaction.response.defer()
+
+      # load history
+      self.history.load_history(interaction.user.name)
+
+      await interaction.followup.send(self.history.data)
     except Exception as e:
       print(e)
 

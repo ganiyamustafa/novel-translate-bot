@@ -6,15 +6,11 @@ from urllib import parse
 from groq import Groq
 from bs4 import BeautifulSoup, ResultSet, Tag
 from typing import Tuple
-from enum import Enum
+from utils.enum import TranslateOutputType, NovelSource
 
 groq_client = Groq(
   api_key=os.getenv("GROQ_KEY"),
 )
-
-class TranslateOutputType(Enum):
-  STRING = 0
-  LIST_STRING = 1
 
 class Scraper():
   def __init__(self):
@@ -35,11 +31,14 @@ class Scraper():
     self.url = url
     return self
 
-  def scrape_list_title(self, title) -> Tuple[ResultSet[Tag], Tag, Tag]:
-    self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
+  def scrape_list_title(self, title: str, source: NovelSource = NovelSource.SYOSETSU) -> Tuple[ResultSet[Tag], Tag, Tag]:
+    if source == NovelSource.SYOSETSU:
+      self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
 
-    soup = BeautifulSoup(self.html_content, "html.parser")
-    return soup.select("div.searchkekka_box .novel_h .tl")
+      soup = BeautifulSoup(self.html_content, "html.parser")
+      return soup.select("div.searchkekka_box .novel_h .tl")
+    
+    return None
 
   def scrape_list_chapter(self, title_url: str) -> ResultSet[Tag]:
     self.set_url(title_url)._request_html_content()
