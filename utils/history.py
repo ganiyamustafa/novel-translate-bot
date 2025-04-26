@@ -1,7 +1,7 @@
 import json
 import aiofiles
 import os
-import tempfile
+from datetime import datetime
 from bs4 import Tag
 
 class History():
@@ -16,7 +16,7 @@ class History():
     if (novel_title not in self.data) or (self.data[novel_title]["id"] < chapter_id):
       self.data[novel_title] = {
         "id": chapter_id,
-        # "title": chapter_title,
+        "last_read": datetime.now().timestamp(),
         "next_url": next_chapter_url
       }
 

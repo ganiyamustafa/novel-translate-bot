@@ -96,6 +96,9 @@ def _translate_text_worker(args):
   )
 
   try:
+      if not chat_completion.choices[0].message.content.split("</think>")[1]:
+        return _translate_text_worker(args)
+
       return chat_completion.choices[0].message.content.split("</think>")[1]
   except IndexError:
       return "[Format Error]"

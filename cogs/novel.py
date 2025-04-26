@@ -6,6 +6,7 @@ from discord.ui import Select, View
 from utils import Scraper, History
 from utils.enum import TranslateOutputType
 from utils.discord_ui import PaginationResultTagSelectView, NovelReadingView
+from datetime import datetime
 
 class Slash(commands.Cog):
   def __init__(self, client: commands.Bot):
@@ -141,8 +142,22 @@ class Slash(commands.Cog):
 
       # load history
       self.history.load_history(interaction.user.name)
+      embed = discord.Embed(
+        color=discord.Color.green(),
+        title="Your History",
+      )
 
-      await interaction.followup.send(self.history.data)
+      sorted_history = sorted(
+        self.history.data.items(),
+        key=lambda x: x[1]['last_read'],
+        reverse=True
+      )
+
+      for novel_title, data in sorted_history:
+        last_read = datetime.fromtimestamp(data['last_read']).strftime("%Y-%m-%d %I:%M %p")
+        embed.add_field(name=f"📚 {novel_title}", value=f"\u200B\u2003\u2003📖 Chapter {data['id']} • Last read {last_read}", inline=False)
+
+      await interaction.followup.send(embed=embed)
     except Exception as e:
       print(e)
 
