@@ -5,7 +5,7 @@ from utils.enum import NovelSource
 from bs4 import ResultSet, Tag
 
 class PaginationResultTagSelectView(View):
-  def __init__(self, datas: ResultSet[Tag], select_callback: callable, next_callback: callable=None, source: NovelSource = NovelSource.SYOSETSU, next_callback_disabled: bool=True, per_page: int=25):
+  def __init__(self, datas: ResultSet[Tag], select_callback: callable, next_tag: Tag, prev_tag: Tag, next_callback: callable=None, source: NovelSource = NovelSource.SYOSETSU, next_callback_disabled: bool=True, per_page: int=25):
     super().__init__(timeout=None)
     self.datas = datas
     self.per_page = per_page
@@ -15,6 +15,8 @@ class PaginationResultTagSelectView(View):
     self.next_callback = next_callback
     self.next_callback_disabled = next_callback_disabled
     self.source = source
+    self.next_tag = next_tag
+    self.prev_tag = prev_tag
     self.update_view()
 
   def build_select(self):

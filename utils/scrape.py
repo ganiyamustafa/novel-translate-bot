@@ -89,19 +89,22 @@ def _translate_text_worker(args):
       messages=[
           {
               "role": "user",
-              "content": f"Terjemahkan kalimat berikut ke dalam bahasa Indonesia dengan gaya bahasa manusia yang alami, tidak kaku, tidak seperti terjemahan mesin. Pastikan hasilnya enak dibaca dan seolah ditulis oleh penutur asli bahasa Indonesia. Jangan tambahkan penjelasan atau kata apa pun di luar hasil terjemahan. Cukup berikan hasil terjemahannya saja. \n {untranslated_txt}",
+              "content": f"Terjemahkan kalimat berikut ke dalam bahasa Indonesia dengan gaya bahasa manusia yang alami, tidak kaku, tidak seperti terjemahan mesin. Pastikan hasilnya enak dibaca dan seolah ditulis oleh penutur asli bahasa Indonesia. Pastikan hasilnya hanya berisi huruf latin tanpa karakter asing seperti kanji atau huruf asing lainnya. Jangan tambahkan penjelasan atau kata apa pun di luar hasil terjemahan. Cukup berikan hasil terjemahannya saja. \n {untranslated_txt}",
           }
       ],
       model="deepseek-r1-distill-llama-70b",
   )
 
   try:
+      if not chat_completion.choices[0].message.content.split("</think>"):
+        return _translate_text_worker(args)
+
       if not chat_completion.choices[0].message.content.split("</think>")[1]:
         return _translate_text_worker(args)
 
       return chat_completion.choices[0].message.content.split("</think>")[1]
   except IndexError:
-      return "[Format Error]"
+    return "[Format Error]"
 
 # translated_text = ""
 

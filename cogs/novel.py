@@ -5,7 +5,7 @@ from discord.ext import commands
 from discord.ui import Select, View
 from utils import Scraper, History
 from utils.enum import TranslateOutputType
-from utils.discord_ui import PaginationResultTagSelectView, NovelReadingView
+from utils.discord_ui import PaginationResultTagSelectView, NovelReadingView, ReadingHistoryView
 from datetime import datetime
 
 class Slash(commands.Cog):
@@ -35,10 +35,10 @@ class Slash(commands.Cog):
       except Exception as e:
         print(e)
 
-    view=PaginationResultTagSelectView(datas=chapters_bs4, select_callback=select_callback, next_callback_disabled=(not next_tag.name in "a"))
+    view=PaginationResultTagSelectView(next_tag=next_tag, prev_tag=prev_tag, datas=chapters_bs4, select_callback=select_callback, next_callback_disabled=(not next_tag.name in "a"))
 
     async def next_callback(interaction: discord.Interaction):
-      chapters_bs4, next, prev = self.scraper.scrape_list_chapter(f"https://ncode.syosetu.com/{next_tag.get('href')}")
+      chapters_bs4, next, prev = self.scraper.scrape_list_chapter(f"https://ncode.syosetu.com/{view.next_tag.get('href')}")
       has_next = next.name in "a"
 
       if not chapters_bs4:
@@ -48,6 +48,8 @@ class Slash(commands.Cog):
       view.next_callback_disabled=not has_next
       view.update_datas(chapters_bs4)
       view.update_view()
+      view.next_tag = next
+      view.prev_tag = prev
 
       await interaction.response.edit_message(view=view)
 
@@ -74,7 +76,8 @@ class Slash(commands.Cog):
         story_data = ""
 
         # break text if reached 2000 length and empty story data for avoid eternal loop
-        if len(filtered_translated_story[0]) > 2000 and not story_data:
+        if len(filtered_translated_story[0]) >= 2000 and not story_data:
+          print("huhu")
           filtered_translated_story.insert(1, filtered_translated_story[0][1999:])
           filtered_translated_story[0] = filtered_translated_story[0][:1999]
 
@@ -153,11 +156,16 @@ class Slash(commands.Cog):
         reverse=True
       )
 
+      view_datas = []
+
       for novel_title, data in sorted_history:
         last_read = datetime.fromtimestamp(data['last_read']).strftime("%Y-%m-%d %I:%M %p")
-        embed.add_field(name=f"📚 {novel_title}", value=f"\u200B\u2003\u2003📖 Chapter {data['id']} • Last read {last_read}", inline=False)
+        embed.add_field(name=f"📚 {novel_title}", value=f"\u200B\u2003\u2003📖 Chapter {data['id']} • {last_read}", inline=False)
+        view_datas.append([f"{novel_title} • Chapter {data['id']}", f"{data['next_url']}|{int(data['id'])+1}|None|{novel_title}"])
 
-      await interaction.followup.send(embed=embed)
+      view = ReadingHistoryView(datas=view_datas, continue_read_callback=self._read_story)
+
+      await interaction.followup.send(embed=embed, view=view)
     except Exception as e:
       print(e)
 
