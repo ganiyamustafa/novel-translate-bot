@@ -31,13 +31,24 @@ class Scraper():
     self.url = url
     return self
 
-  def scrape_list_title(self, title: str, source: NovelSource = NovelSource.SYOSETSU) -> Tuple[ResultSet[Tag], Tag, Tag]:
+  def scrape_list_title(self, title: str, source: NovelSource = NovelSource.SYOSETSU) -> ResultSet[Tag]:
     if source == NovelSource.SYOSETSU:
       self.set_url(f"https://yomou.syosetu.com/search.php?search_type=novel&word={title}&button=")._request_html_content()
 
       soup = BeautifulSoup(self.html_content, "html.parser")
       return soup.select("div.searchkekka_box .novel_h .tl")
     
+    if source == NovelSource.KAKUYOMU:
+      self.set_url(f"https://kakuyomu.jp/search?q={title}")._request_html_content()
+
+      soup = BeautifulSoup(self.html_content, "html.parser")
+
+      # return none when empty message found
+      if soup.select_one("div.EmptyMessage_emptyMessage__Kvdgs"):
+        return None
+
+      return soup.select("h3.Heading_size-m___7G0X span.Gap_size-4s__F67Nf a")
+
     return None
 
   def scrape_list_chapter(self, title_url: str) -> ResultSet[Tag]:

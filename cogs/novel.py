@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import Select, View
 from utils import Scraper, History
-from utils.enum import TranslateOutputType
+from utils.enum import NovelSource
 from utils.discord_ui import PaginationResultTagSelectView, NovelReadingView, ReadingHistoryView
 from datetime import datetime
 
@@ -106,12 +106,12 @@ class Slash(commands.Cog):
 
   @app_commands.command(name="search", description="searching a novel")
   @app_commands.guild_only()
-  async def search(self, interaction: discord.Interaction, title: str):
+  async def search(self, interaction: discord.Interaction, title: str, source: NovelSource = NovelSource.SYOSETSU):
     try:
       await interaction.response.defer()
 
       # scrape data
-      titles_bs4 = self.scraper.scrape_list_title(title)
+      titles_bs4 = self.scraper.scrape_list_title(title, source=source)
       if titles_bs4:
         async def callback(interaction: discord.Interaction):
           try:

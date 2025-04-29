@@ -2,3 +2,4 @@
 novel-scrapping-venv/
 novel-venv-2/
 *.json
+_scrapping.py
