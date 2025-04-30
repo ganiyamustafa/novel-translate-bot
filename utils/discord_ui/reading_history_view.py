@@ -2,10 +2,10 @@ import discord
 import math
 from typing import Callable
 from discord.ui import Select, View, Button
-from bs4 import ResultSet, Tag
+from utils.enum import NovelSource
 
 class ReadingHistoryView(View):
-  def __init__(self, datas: list[list[str]], continue_read_callback: Callable[[discord.Interaction, str], None], per_page: int=25):
+  def __init__(self, datas: list[list[str]],  continue_read_callback: Callable[[discord.Interaction, str, NovelSource], None], per_page: int=25):
     super().__init__(timeout=None)
     self.datas = datas
     self.per_page = per_page
@@ -13,6 +13,7 @@ class ReadingHistoryView(View):
     self.max_page = math.ceil(len(datas) / per_page) - 1
     self.selected_novel_data = ""
     self.continue_read_callback = continue_read_callback
+    self.source = NovelSource.KAKUYOMU
     self.update_view()
 
   def update_view(self):
@@ -32,17 +33,28 @@ class ReadingHistoryView(View):
     options = []
 
     async def callback(interaction: discord.Interaction):
-      self.selected_novel_data = interaction.data['values'][0]
-      print(self.selected_novel_data)
-      self.update_view()
+      try:
+        # set selected novel to select values
+        self.selected_novel_data = interaction.data["values"][0]
 
-      await interaction.response.edit_message(view=self)
+        # set selected novel to it's original data values
+        self.selected_novel_data = [data for _, data in self.datas[start:end] if data.startswith(self.selected_novel_data)][0]
+
+        # set scraping source
+        self.source = NovelSource(int(self.selected_novel_data.split("|")[-2]))
+        self.update_view()
+
+        await interaction.response.edit_message(view=self)
+      except Exception as e:
+        print(e)
 
     for novel, datas in self.datas[start:end]:
+      select_value_data = datas.split("|")[0:-2]
+
       options.append(
         discord.SelectOption(
           label=novel,
-          value=datas,
+          value="|".join(select_value_data),
           default=self.selected_novel_data == datas
         )
       )
@@ -103,7 +115,7 @@ class ReadingHistoryView(View):
     button = Button(label="Continue Reading", style=discord.ButtonStyle.blurple)
 
     async def callback(interaction: discord.Interaction):
-      return await self.continue_read_callback(interaction, self.selected_novel_data)
+      return await self.continue_read_callback(interaction, self.selected_novel_data, self.source)
 
     button.disabled = not self.selected_novel_data
     button.callback = callback

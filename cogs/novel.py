@@ -19,53 +19,66 @@ class Slash(commands.Cog):
     fmt = await self.client.tree.sync()
     await ctx.send(f"Synced {len(fmt)} commands.")
 
-  async def _find_chapter(self, interaction: discord.Interaction, data: str):
-    # await interaction.response.defer()
+  async def _find_chapter(self, interaction: discord.Interaction, data: str, source: NovelSource = NovelSource.SYOSETSU):
+    await interaction.response.defer()
+
+    view_msg = interaction.message
+
+    # warning waiting message
+    warning_waiting_msg = await interaction.followup.send(content="maybe took a minute, please wait...", ephemeral=True)
 
     # main logic
     url, novel_title = data.split("|")
-    chapters_bs4, next_tag, prev_tag = self.scraper.scrape_list_chapter(url)
+    chapters_bs4, next_tag, prev_tag = self.scraper.scrape_list_chapter(url, source=source)
 
     if not chapters_bs4:
       await interaction.response.send_message("Not Found")
 
     async def select_callback(interact: discord.Interaction):
       try:
-        await self._read_story(interact, f"{interact.data['values'][0]}|{novel_title}")
+        view.select.disabled = True
+        await self._read_story(interact, f"{interact.data['values'][0]}|0|{novel_title}", source=source)
       except Exception as e:
         print(e)
 
-    view=PaginationResultTagSelectView(next_tag=next_tag, prev_tag=prev_tag, datas=chapters_bs4, select_callback=select_callback, next_callback_disabled=(not next_tag.name in "a"))
+    view=PaginationResultTagSelectView(next_tag=next_tag, prev_tag=prev_tag, datas=chapters_bs4, select_callback=select_callback, next_callback_disabled=bool(next_tag and not next_tag.name in "a"), source=source)
 
     async def next_callback(interaction: discord.Interaction):
-      chapters_bs4, next, prev = self.scraper.scrape_list_chapter(f"https://ncode.syosetu.com/{view.next_tag.get('href')}")
-      has_next = next.name in "a"
+      if view.next_tag:
+        chapters_bs4, next, prev = self.scraper.scrape_list_chapter(view.next_tag.get('href'), source=source)
+        has_next = next.name in "a"
 
-      if not chapters_bs4:
-        await interaction.response.send_message("Not Found")
+        if not chapters_bs4:
+          await interaction.response.send_message("Not Found")
 
-      view.page += 1
-      view.next_callback_disabled=not has_next
-      view.update_datas(chapters_bs4)
-      view.update_view()
-      view.next_tag = next
-      view.prev_tag = prev
+        view.page += 1
+        view.next_callback_disabled=not has_next
+        view.update_datas(chapters_bs4)
+        view.update_view()
+        view.next_tag = next
+        view.prev_tag = prev
 
-      await interaction.response.edit_message(view=view)
+        await interaction.response.edit_message(view=view)
 
     view.next_callback = next_callback
 
-    # scrap novel
-    await interaction.response.edit_message(content="", view=view)
+    # delete warning message
+    try:
+      await warning_waiting_msg.delete()
+    except:
+      pass
 
-  async def _read_story(self, interaction: discord.Interaction, data: str):
+    # scrap novel
+    await interaction.followup.edit_message(message_id=view_msg.id, content="", view=view)
+
+  async def _read_story(self, interaction: discord.Interaction, data: str, source: NovelSource = NovelSource.SYOSETSU):
     await interaction.response.defer()
 
-    url, ch_id, ch_title, novel_title = data.split("|")
+    url, ch_id, ch_title, _, novel_title = data.split("|")
     feedback_msg = await interaction.followup.send(content="Processing your request, maybe took a minute, please wait...", ephemeral=True)
 
     try:
-      story, next_chapter, prev_chapter = self.scraper.scrape_story(url)
+      story, next_chapter, prev_chapter = self.scraper.scrape_story(url, source=source)
       translated_story = self.scraper.translate(story.text)
       filtered_translated_story = [txt for txt in translated_story.split('\n')] # break text for limit text function used
       story_datas = []
@@ -95,7 +108,7 @@ class Slash(commands.Cog):
 
         story_datas.append(story_data)
 
-      view=NovelReadingView(datas=story_datas, novel_data=data,  next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story)
+      view=NovelReadingView(datas=story_datas, novel_data=data,  next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story, source=source)
 
       await self.history.save_read_history(novel_title, ch_title, next_chapter.get("href"), ch_id, interaction.user.name)
 
@@ -115,7 +128,7 @@ class Slash(commands.Cog):
       if titles_bs4:
         async def callback(interaction: discord.Interaction):
           try:
-            await self._find_chapter(interaction, select.values[0])
+            await self._find_chapter(interaction, data=select.values[0], source=source)
           except Exception as e:
             print(e)
 
@@ -161,7 +174,7 @@ class Slash(commands.Cog):
       for novel_title, data in sorted_history:
         last_read = datetime.fromtimestamp(data['last_read']).strftime("%Y-%m-%d %I:%M %p")
         embed.add_field(name=f"📚 {novel_title}", value=f"\u200B\u2003\u2003📖 Chapter {data['id']} • {last_read}", inline=False)
-        view_datas.append([f"{novel_title} • Chapter {data['id']}", f"{data['next_url']}|{int(data['id'])+1}|None|{novel_title}"])
+        view_datas.append([f"{novel_title} • Chapter {data['id']}", f"{data['next_url']}|{int(data['id'])+1}|-|{data['source']}|{novel_title}"])
 
       view = ReadingHistoryView(datas=view_datas, continue_read_callback=self._read_story)
 

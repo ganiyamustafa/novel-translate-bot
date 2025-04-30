@@ -3,9 +3,10 @@ import math
 from typing import Callable
 from discord.ui import Select, View, Button
 from bs4 import ResultSet, Tag
+from utils.enum import NovelSource
 
 class NovelReadingView(View):
-  def __init__(self, datas: list[str], novel_data: str, next_chapter_tag: Tag, prev_chapter_tag: Tag, update_chapter_callback: Callable[[discord.Interaction, str], None], per_page: int=1):
+  def __init__(self, datas: list[str], novel_data: str, next_chapter_tag: Tag, prev_chapter_tag: Tag, update_chapter_callback: Callable[[discord.Interaction, str, NovelSource], None], source: NovelSource, per_page: int=1):
     super().__init__(timeout=None)
     self.datas = datas
     self.per_page = per_page
@@ -13,8 +14,9 @@ class NovelReadingView(View):
     self.max_page = math.ceil(len(datas) / per_page) - 1
     self.prev_chapter_tag = prev_chapter_tag
     self.next_chapter_tag = next_chapter_tag
-    _, self.ch_id, _, self.novel_title = novel_data.split("|")
+    _, self.ch_id, _, _, self.novel_title = novel_data.split("|")
     self.update_chapter_callback = update_chapter_callback
+    self.source = source
     self.update_view()
 
   def update_view(self):
@@ -43,7 +45,10 @@ class NovelReadingView(View):
     button = Button(label="Prev Chapter", style=discord.ButtonStyle.green)
 
     async def callback(interaction: discord.Interaction):
-      await self.update_chapter_callback(interaction, f'{self.prev_chapter_tag.get("href")}|{int(self.ch_id)-1}|{self.prev_chapter_tag.get_text()}|{self.novel_title}')
+      # button.disabled = True
+      # self.update_view()
+      # await interaction.response.edit_message(content=self.datas[self.page], view=self)
+      await self.update_chapter_callback(interaction, f'{self.prev_chapter_tag.get("href")}|{int(self.ch_id)-1}|-|0|{self.novel_title}', self.source)
 
     button.disabled = not bool(self.prev_chapter_tag)
     button.callback = callback
@@ -70,7 +75,10 @@ class NovelReadingView(View):
     button = Button(label="Next Chapter", style=discord.ButtonStyle.green)
 
     async def callback(interaction: discord.Interaction):
-      await self.update_chapter_callback(interaction, f'{self.next_chapter_tag.get("href")}|{int(self.ch_id)+1}|{self.next_chapter_tag.get_text()}|{self.novel_title}')
+      # button.disabled = True
+      # self.update_view()
+      # await interaction.response.edit_message(content=self.datas[self.page], view=self)
+      await self.update_chapter_callback(interaction, f'{self.next_chapter_tag.get("href")}|{int(self.ch_id)+1}|-|0|{self.novel_title}', self.source)
 
     button.disabled = not bool(self.next_chapter_tag)
     button.callback = callback

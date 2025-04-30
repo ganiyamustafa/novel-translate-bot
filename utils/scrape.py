@@ -51,17 +51,56 @@ class Scraper():
 
     return None
 
-  def scrape_list_chapter(self, title_url: str) -> ResultSet[Tag]:
-    self.set_url(title_url)._request_html_content()
+  def scrape_list_chapter(self, title_url: str, source: NovelSource = NovelSource.SYOSETSU) -> ResultSet[Tag]:
+    if source == NovelSource.SYOSETSU:
+      if not (title_url.startswith("https") or title_url.startswith("http")):
+        title_url = f"https://ncode.syosetu.com/{title_url}"
 
-    soup = BeautifulSoup(self.html_content, "html.parser")
-    return soup.select("div.p-eplist .p-eplist__sublist .p-eplist__subtitle"), soup.select_one(".c-pager__item--next"), soup.select_one(".c-pager__item--before")
+      self.set_url(title_url)._request_html_content()
 
-  def scrape_story(self, url: str) -> Tuple[Tag, Tag, Tag]:
-    self.set_url(f'https://ncode.syosetu.com/{url}')._request_html_content()
+      soup = BeautifulSoup(self.html_content, "html.parser")
+      return soup.select("div.p-eplist .p-eplist__sublist .p-eplist__subtitle"), soup.select_one(".c-pager__item--next"), soup.select_one(".c-pager__item--before")
 
-    soup = BeautifulSoup(self.html_content, "html.parser")
-    return soup.select_one("div.p-novel__body"), soup.select_one("a.c-pager__item--next"), soup.select_one("a.c-pager__item--before")
+    if source == NovelSource.KAKUYOMU:
+      if not (title_url.startswith("https") or title_url.startswith("http")):
+        title_url = f"https://kakuyomu.jp{title_url}"
+
+      # get base work home html
+      self.set_url(title_url)._request_html_content()
+      soup = BeautifulSoup(self.html_content, "html.parser")
+
+      # go to and scrape first chapter
+      url = soup.select_one("a.WorkTocSection_link__ocg9K").get("href")
+      self.set_url(f'https://kakuyomu.jp{url}/episode_sidebar')._request_html_content()
+      soup = BeautifulSoup(self.html_content, "html.parser")
+
+      return soup.select("div.widget-toc-main ol li a"), None, None
+
+    return None
+
+  def scrape_story(self, url: str, source: NovelSource = NovelSource.SYOSETSU) -> Tuple[Tag, Tag, Tag]:
+    if source == NovelSource.SYOSETSU:
+      self.set_url(f'https://ncode.syosetu.com/{url}')._request_html_content()
+
+      soup = BeautifulSoup(self.html_content, "html.parser")
+      return soup.select_one("div.p-novel__body"), soup.select_one("a.c-pager__item--next"), soup.select_one("a.c-pager__item--before")
+
+    if source == NovelSource.KAKUYOMU:
+      # get story data
+      self.set_url(f'https://kakuyomu.jp{url}')._request_html_content()
+      soup = BeautifulSoup(self.html_content, "html.parser")
+      story_tag = soup.select_one("div.widget-episode")
+
+      # get next episode data
+      self.set_url(f'https://kakuyomu.jp{url}/episode_sidebar')._request_html_content()
+      soup = BeautifulSoup(self.html_content, "html.parser")
+      selected_chapter = soup.select_one("li.isHighlighted")
+      next_chapter = selected_chapter.find_next_sibling("li", class_="widget-toc-episode")
+      prev_chapter = selected_chapter.find_previous_sibling("li", class_="widget-toc-episode")
+
+      return story_tag, next_chapter.find("a") if next_chapter else None, prev_chapter.find("a") if prev_chapter else None
+
+    return None
 
   def translate(self, data: str, output_type: TranslateOutputType = TranslateOutputType.STRING) -> str | list[str]:
     filtered_datas = [txt for txt in data.split('\n') if txt]

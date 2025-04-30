@@ -26,12 +26,16 @@ class PaginationResultTagSelectView(View):
     options = []
 
     for chapter in self.datas[start:end]:
-      ch_id = chapter.get('href').split('/')[-2] if self.source == NovelSource.SYOSETSU else self.datas.index(chapter)+1
+      if self.source == NovelSource.SYOSETSU:
+        ch_id = chapter.get('href').split('/')[-2]
+        
+      if self.source == NovelSource.KAKUYOMU:
+        ch_id = self.datas.index(chapter)+1
 
       options.append(
         discord.SelectOption(
-            label=f"{ch_id}. {chapter.get_text(strip=True)}",
-            value=f'{chapter.get("href")}|{ch_id}|{chapter.get_text()}'
+          label=f"{ch_id}. {chapter.get_text(strip=True)}",
+          value=f'{chapter.get("href")}|{ch_id}|None'
         )
       )
 
@@ -86,6 +90,7 @@ class PaginationResultTagSelectView(View):
       await interaction.response.edit_message(view=self)
 
     if self.page >= self.max_page:
+      print("sss ", self.next_callback_disabled)
       button.disabled = self.next_callback_disabled
       button.callback = self.next_callback
       return button
