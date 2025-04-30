@@ -37,7 +37,7 @@ class History():
 
     return self
 
-  async def save_read_history(self, novel_title: str, chapter_title: str, next_chapter_url: str, chapter_id: int, username: str = "", source: NovelSource = NovelSource.KAKUYOMU):
+  async def save_read_history(self, novel_title: str, chapter_title: str, next_chapter_url: str, chapter_id: int, username: str = "", source: NovelSource = NovelSource.SYOSETSU):
     await self.load_history(username)._update_or_save_data(novel_title, chapter_title, next_chapter_url, chapter_id, username, source)
 
     

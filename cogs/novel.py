@@ -110,7 +110,7 @@ class Slash(commands.Cog):
 
       view=NovelReadingView(datas=story_datas, novel_data=data,  next_chapter_tag=next_chapter, prev_chapter_tag=prev_chapter, update_chapter_callback=self._read_story, source=source)
 
-      await self.history.save_read_history(novel_title, ch_title, next_chapter.get("href"), ch_id, interaction.user.name)
+      await self.history.save_read_history(novel_title, ch_title, next_chapter.get("href"), ch_id, interaction.user.name, source)
 
       await feedback_msg.edit(content=story_datas[0], view=view)
     except Exception as e:
