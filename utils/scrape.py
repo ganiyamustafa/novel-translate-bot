@@ -7,6 +7,7 @@ from groq import Groq
 from bs4 import BeautifulSoup, ResultSet, Tag
 from typing import Tuple
 from utils.enum import TranslateOutputType, NovelSource
+import random
 
 groq_client = Groq(
   api_key=os.getenv("GROQ_KEY"),
@@ -116,7 +117,7 @@ class Scraper():
 
         untranslated_text += filtered_datas.pop(0)
 
-      args_worker.append((untranslated_text, os.getenv("GROQ_KEY")))
+      args_worker.append((untranslated_text, random.choice([os.getenv("GROQ_KEY"), os.getenv("GROQ_KEY_2")])))
 
     # multiprocessing worker
     with Pool(processes=len(args_worker)) as pool:
@@ -139,7 +140,7 @@ def _translate_text_worker(args):
       messages=[
           {
               "role": "user",
-              "content": f"Terjemahkan kalimat berikut ke dalam bahasa Indonesia dengan gaya bahasa manusia yang alami, tidak kaku, tidak seperti terjemahan mesin. Pastikan hasilnya enak dibaca dan seolah ditulis oleh penutur asli bahasa Indonesia. Pastikan hasilnya hanya berisi huruf latin tanpa karakter asing seperti kanji atau huruf asing lainnya. Jangan tambahkan penjelasan atau kata apa pun di luar hasil terjemahan. Cukup berikan hasil terjemahannya saja. \n {untranslated_txt}",
+              "content": f"Terjemahkan kalimat berikut ke dalam bahasa Indonesia dengan gaya bahasa manusia yang alami, tidak seperti terjemahan mesin. Pastikan hasilnya enak dibaca dan seolah ditulis oleh penutur asli bahasa Indonesia. Pastikan hasilnya hanya berisi huruf latin huruf kanji atau huruf asing lainnya. Jangan tambahkan penjelasan atau kata apa pun di luar hasil terjemahan. Cukup berikan hasil terjemahannya saja. \n {untranslated_txt}",
           }
       ],
       model="deepseek-r1-distill-llama-70b",
